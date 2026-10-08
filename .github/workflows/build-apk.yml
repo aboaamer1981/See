@@ -2,60 +2,69 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Create Android Project
+        shell: bash
         run: |
           mkdir -p SedfaApp/app/src/main/java/com/sedfa/portal
           mkdir -p SedfaApp/app/src/main/res/values
 
-          cat << 'EOF' > SedfaApp/settings.gradle
+          cat > SedfaApp/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
           rootProject.name = "SedfaPortal"
-          include ':app'
+          include(":app")
           EOF
 
-          cat << 'EOF' > SedfaApp/build.gradle
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.2.2'
-              }
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+          cat > SedfaApp/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
           }
           EOF
 
-          cat << 'EOF' > SedfaApp/app/build.gradle
+          cat > SedfaApp/app/build.gradle <<'EOF'
           plugins {
               id 'com.android.application'
           }
+
           android {
               namespace 'com.sedfa.portal'
               compileSdk 34
+
               defaultConfig {
                   applicationId "com.sedfa.portal"
                   minSdk 21
@@ -63,49 +72,68 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
           }
+
           dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.appcompat:appcompat:1.7.0'
           }
           EOF
 
-          cat << 'EOF' > SedfaApp/app/src/main/res/values/strings.xml
+          cat > SedfaApp/app/src/main/res/values/strings.xml <<'EOF'
           <resources>
               <string name="app_name">بوابة صدفا الرقمية</string>
           </resources>
           EOF
 
-          cat << 'EOF' > SedfaApp/app/src/main/AndroidManifest.xml
+          cat > SedfaApp/app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="white">#FFFFFF</color>
+          </resources>
+          EOF
+
+          cat > SedfaApp/app/src/main/res/values/themes.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:statusBarColor">#FFFFFF</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > SedfaApp/app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
+
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
               <application
                   android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
                   android:label="@string/app_name"
-                  android:roundIcon="@mipmap/ic_launcher"
                   android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  android:theme="@style/AppTheme">
+
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
-                      android:configChanges="orientation|screenSize">
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
+
                   </activity>
+
               </application>
+
           </manifest>
           EOF
 
-          cat << 'EOF' > SedfaApp/app/src/main/java/com/sedfa/portal/MainActivity.java
+          cat > SedfaApp/app/src/main/java/com/sedfa/portal/MainActivity.java <<'EOF'
           package com.sedfa.portal;
 
           import android.annotation.SuppressLint;
@@ -114,32 +142,38 @@ jobs:
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
+
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
+
               private WebView webView;
-              private static final String APP_URL = "https://script.google.com/macros/s/AKfycbwLxjLFbLIwYp3tWXk8NRgn5DlgvFxuvcjDLYB_fdtNCQbdIPf-OfIRdz2rrN65k9u6pg/exec";
+
+              private static final String APP_URL =
+                  "https://script.google.com/macros/s/AKfycbwLxjLFbLIwYp3tWXk8NRgn5DlgvFxuvcjDLYB_fdtNCQbdIPf-OfIRdz2rrN65k9u6pg/exec";
 
               @SuppressLint("SetJavaScriptEnabled")
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
+
                   webView = new WebView(this);
                   setContentView(webView);
 
-                  WebSettings webSettings = webView.getSettings();
-                  webSettings.setJavaScriptEnabled(true);
-                  webSettings.setDomStorageEnabled(true);
-                  webSettings.setDatabaseEnabled(true);
-                  webSettings.setAllowFileAccess(true);
-                  webSettings.setUseWideViewPort(true);
-                  webSettings.setLoadWithOverviewMode(true);
-                  webSettings.setSupportZoom(true);
-                  webSettings.setBuiltInZoomControls(true);
-                  webSettings.setDisplayZoomControls(false);
+                  WebSettings settings = webView.getSettings();
+
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setJavaScriptCanOpenWindowsAutomatically(true);
+                  settings.setSupportMultipleWindows(true);
+                  settings.setUseWideViewPort(true);
+                  settings.setLoadWithOverviewMode(false);
 
                   webView.setWebViewClient(new WebViewClient());
                   webView.setWebChromeClient(new WebChromeClient());
+
                   webView.loadUrl(APP_URL);
               }
 
@@ -154,13 +188,17 @@ jobs:
           }
           EOF
 
-      - name: Setup Gradle and Build APK
-        run: |
-          sudo apt-get update && sudo apt-get install -y gradle
           cd SedfaApp
-          gradle assembleDebug --no-daemon
 
-      - name: Upload APK Artifact
+          gradle wrapper --gradle-version 8.2 --distribution-type bin
+
+      - name: Build APK
+        working-directory: SedfaApp
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Sedfa-Digital-Portal-APK
