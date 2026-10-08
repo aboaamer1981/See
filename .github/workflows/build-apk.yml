@@ -19,11 +19,13 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
       - name: Create Android WebView Project
         run: |
           mkdir -p SedfaApp/app/src/main/java/com/sedfa/portal
           mkdir -p SedfaApp/app/src/main/res/values
-          mkdir -p SedfaApp/gradle/wrapper
 
           cat << 'EOF' > SedfaApp/settings.gradle
           rootProject.name = "SedfaPortal"
@@ -70,7 +72,6 @@ jobs:
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
           }
           EOF
 
@@ -154,14 +155,13 @@ jobs:
           }
           EOF
 
-      - name: Build APK with Gradle
+      - name: Build APK
         run: |
           cd SedfaApp
-          gradle assembleDebug
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Sedfa-Digital-Portal-APK
           path: SedfaApp/app/build/outputs/apk/debug/app-debug.apk
-
