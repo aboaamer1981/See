@@ -13,16 +13,16 @@ jobs:
 
     steps:
 
-      # ==========================================
-      # 1. تحميل ملفات المشروع
-      # ==========================================
+      # =========================================
+      # 1 - Checkout
+      # =========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
 
-      # ==========================================
-      # 2. Java 17
-      # ==========================================
+      # =========================================
+      # 2 - Java 17
+      # =========================================
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
@@ -30,44 +30,50 @@ jobs:
           java-version: "17"
 
 
-      # ==========================================
-      # 3. Android SDK
-      # ==========================================
+      # =========================================
+      # 3 - Android SDK
+      # =========================================
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+          accept-android-sdk-licenses: "true"
+          log-accepted-android-sdk-licenses: "false"
 
 
-      # ==========================================
-      # 4. تثبيت Android SDK المطلوبة
-      # ==========================================
+      # =========================================
+      # 4 - Install required Android packages
+      # =========================================
       - name: Install Android SDK Packages
+        shell: bash
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
+          set -e
 
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
+          sdkmanager "platforms;android-34"
+          sdkmanager "build-tools;34.0.0"
+          sdkmanager "platform-tools"
+
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
 
-      # ==========================================
-      # 5. إنشاء مشروع Android
-      # ==========================================
+      # =========================================
+      # 5 - Create Android Project
+      # =========================================
       - name: Create Android Project
         shell: bash
         run: |
 
           set -e
 
-          echo "Creating Sedfa Android project..."
+          echo "Creating Sedfa Android Project..."
 
           mkdir -p SedfaApp/app/src/main/java/com/sedfa/portal
           mkdir -p SedfaApp/app/src/main/res/values
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # settings.gradle
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/settings.gradle <<'EOF'
           pluginManagement {
@@ -93,9 +99,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # Root build.gradle
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/build.gradle <<'EOF'
           plugins {
@@ -104,9 +110,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
-          # App build.gradle
-          # --------------------------------------
+          # ---------------------------------------
+          # app/build.gradle
+          # ---------------------------------------
 
           cat > SedfaApp/app/build.gradle <<'EOF'
           plugins {
@@ -147,9 +153,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # strings.xml
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/app/src/main/res/values/strings.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -162,9 +168,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # themes.xml
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/app/src/main/res/values/themes.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -177,13 +183,11 @@ jobs:
 
                   <item name="android:fontFamily">sans</item>
 
-                  <item name="android:windowActionModeOverlay">true</item>
-
                   <item name="android:colorAccent">#1565C0</item>
 
-                  <item name="android:navigationBarColor">#FFFFFF</item>
-
                   <item name="android:statusBarColor">#FFFFFF</item>
+
+                  <item name="android:navigationBarColor">#FFFFFF</item>
 
                   <item name="android:windowLightStatusBar">true</item>
 
@@ -193,9 +197,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # AndroidManifest.xml
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -203,14 +207,11 @@ jobs:
           <manifest
               xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <!-- Internet -->
               <uses-permission
                   android:name="android.permission.INTERNET" />
 
-              <!-- Network status -->
               <uses-permission
                   android:name="android.permission.ACCESS_NETWORK_STATE" />
-
 
               <application
 
@@ -224,17 +225,13 @@ jobs:
 
                   android:theme="@style/AppTheme">
 
-
                   <activity
 
                       android:name=".MainActivity"
 
                       android:exported="true"
 
-                      android:screenOrientation="unspecified"
-
                       android:configChanges="orientation|screenSize|keyboardHidden">
-
 
                       <intent-filter>
 
@@ -254,9 +251,9 @@ jobs:
           EOF
 
 
-          # --------------------------------------
+          # ---------------------------------------
           # MainActivity.java
-          # --------------------------------------
+          # ---------------------------------------
 
           cat > SedfaApp/app/src/main/java/com/sedfa/portal/MainActivity.java <<'EOF'
           package com.sedfa.portal;
@@ -282,14 +279,11 @@ jobs:
 
                   super.onCreate(savedInstanceState);
 
-
-                  // إنشاء WebView
                   webView = new WebView(this);
 
                   setContentView(webView);
 
 
-                  // إعداد WebView
                   WebSettings settings = webView.getSettings();
 
 
@@ -305,65 +299,46 @@ jobs:
                   settings.setDatabaseEnabled(true);
 
 
-                  // File access
+                  // File / Content access
                   settings.setAllowFileAccess(true);
-
-
-                  // Content access
                   settings.setAllowContentAccess(true);
 
 
-                  // Responsive pages
+                  // Responsive web application
                   settings.setUseWideViewPort(true);
-
                   settings.setLoadWithOverviewMode(false);
 
 
-                  // فتح النوافذ التي تحتاجها صفحات الويب
+                  // JavaScript windows
                   settings.setJavaScriptCanOpenWindowsAutomatically(true);
-
                   settings.setSupportMultipleWindows(true);
 
 
-                  // Zoom
-                  settings.setSupportZoom(false);
-
-                  settings.setBuiltInZoomControls(false);
-
-                  settings.setDisplayZoomControls(false);
-
-
-                  // User Agent طبيعي
-                  settings.setUserAgentString(
-                      settings.getUserAgentString()
-                  );
-
-
                   // Cookies
-                  CookieManager cookieManager =
+                  CookieManager cookies =
                       CookieManager.getInstance();
 
-                  cookieManager.setAcceptCookie(true);
+                  cookies.setAcceptCookie(true);
 
-                  cookieManager.setAcceptThirdPartyCookies(
+                  cookies.setAcceptThirdPartyCookies(
                       webView,
                       true
                   );
 
 
-                  // منع فتح الروابط خارج التطبيق
+                  // Keep navigation inside the application
                   webView.setWebViewClient(
                       new WebViewClient()
                   );
 
 
-                  // دعم JavaScript dialogs والتحميلات
+                  // JavaScript dialogs / browser features
                   webView.setWebChromeClient(
                       new WebChromeClient()
                   );
 
 
-                  // فتح بوابة صدفا
+                  // Open Sedfa Portal
                   webView.loadUrl(APP_URL);
               }
 
@@ -407,9 +382,9 @@ jobs:
           echo "Android project created successfully."
 
 
-      # ==========================================
-      # 6. تنزيل Gradle 8.2.1
-      # ==========================================
+      # =========================================
+      # 6 - Install Gradle
+      # =========================================
       - name: Install Gradle 8.2.1
         shell: bash
         run: |
@@ -433,45 +408,55 @@ jobs:
           echo "Gradle ${GRADLE_VERSION} installed."
 
 
-      # ==========================================
-      # 7. التحقق من الأدوات
-      # ==========================================
+      # =========================================
+      # 7 - Check environment
+      # =========================================
       - name: Check Build Environment
         run: |
 
+          echo "===== JAVA ====="
+
           java -version
+
+          echo "===== GRADLE ====="
 
           gradle --version
 
-          sdkmanager --list | head -40
+          echo "===== ANDROID ====="
+
+          sdkmanager --list_installed
 
 
-      # ==========================================
-      # 8. Build APK
-      # ==========================================
+      # =========================================
+      # 8 - Build APK
+      # =========================================
       - name: Build Debug APK
         working-directory: SedfaApp
         run: |
 
           set -e
 
-          gradle assembleDebug --no-daemon --stacktrace
+          echo "Starting Android APK build..."
+
+          gradle assembleDebug \
+            --no-daemon \
+            --stacktrace
 
           echo "APK BUILD SUCCESSFUL"
 
 
-      # ==========================================
-      # 9. التأكد من وجود APK
-      # ==========================================
+      # =========================================
+      # 9 - Verify APK
+      # =========================================
       - name: Verify APK
         shell: bash
         run: |
 
           set -e
 
-          APK="SedfaApp/app/build/outputs/apk/debug/app-debug.apk"
+          APK_PATH="SedfaApp/app/build/outputs/apk/debug/app-debug.apk"
 
-          if [ ! -f "$APK" ]; then
+          if [ ! -f "$APK_PATH" ]; then
 
               echo "ERROR: APK was not created."
 
@@ -479,13 +464,16 @@ jobs:
 
           fi
 
-          echo "APK found:"
-          ls -lh "$APK"
+          echo "================================="
+          echo "APK CREATED SUCCESSFULLY"
+          echo "================================="
+
+          ls -lh "$APK_PATH"
 
 
-      # ==========================================
-      # 10. رفع APK كـ Artifact
-      # ==========================================
+      # =========================================
+      # 10 - Upload APK
+      # =========================================
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
