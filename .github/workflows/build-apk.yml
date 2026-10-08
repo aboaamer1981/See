@@ -1,33 +1,73 @@
-name: Build Android APK
+name: Build Sedfa Digital Portal APK
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
+
+      # ==========================================
+      # 1. تحميل ملفات المشروع
+      # ==========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
+
+      # ==========================================
+      # 2. Java 17
+      # ==========================================
+      - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+
+      # ==========================================
+      # 3. Android SDK
+      # ==========================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+
+      # ==========================================
+      # 4. تثبيت Android SDK المطلوبة
+      # ==========================================
+      - name: Install Android SDK Packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+
+      # ==========================================
+      # 5. إنشاء مشروع Android
+      # ==========================================
       - name: Create Android Project
         shell: bash
         run: |
+
+          set -e
+
+          echo "Creating Sedfa Android project..."
+
           mkdir -p SedfaApp/app/src/main/java/com/sedfa/portal
           mkdir -p SedfaApp/app/src/main/res/values
+
+
+          # --------------------------------------
+          # settings.gradle
+          # --------------------------------------
 
           cat > SedfaApp/settings.gradle <<'EOF'
           pluginManagement {
@@ -40,6 +80,7 @@ jobs:
 
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
               repositories {
                   google()
                   mavenCentral()
@@ -47,8 +88,14 @@ jobs:
           }
 
           rootProject.name = "SedfaPortal"
+
           include(":app")
           EOF
+
+
+          # --------------------------------------
+          # Root build.gradle
+          # --------------------------------------
 
           cat > SedfaApp/build.gradle <<'EOF'
           plugins {
@@ -56,74 +103,147 @@ jobs:
           }
           EOF
 
+
+          # --------------------------------------
+          # App build.gradle
+          # --------------------------------------
+
           cat > SedfaApp/app/build.gradle <<'EOF'
           plugins {
               id 'com.android.application'
           }
 
           android {
+
               namespace 'com.sedfa.portal'
+
               compileSdk 34
 
               defaultConfig {
+
                   applicationId "com.sedfa.portal"
+
                   minSdk 21
+
                   targetSdk 34
+
                   versionCode 1
+
                   versionName "1.0"
               }
-          }
 
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.0'
+              buildTypes {
+
+                  debug {
+                      minifyEnabled false
+                  }
+
+                  release {
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
           }
           EOF
+
+
+          # --------------------------------------
+          # strings.xml
+          # --------------------------------------
 
           cat > SedfaApp/app/src/main/res/values/strings.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+
           <resources>
+
               <string name="app_name">بوابة صدفا الرقمية</string>
+
           </resources>
           EOF
 
-          cat > SedfaApp/app/src/main/res/values/colors.xml <<'EOF'
-          <resources>
-              <color name="white">#FFFFFF</color>
-          </resources>
-          EOF
+
+          # --------------------------------------
+          # themes.xml
+          # --------------------------------------
 
           cat > SedfaApp/app/src/main/res/values/themes.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+
+              <style
+                  name="AppTheme"
+                  parent="@android:style/Theme.Material.Light.NoActionBar">
+
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:windowLightStatusBar">true</item>
-                  <item name="android:statusBarColor">#FFFFFF</item>
+
+                  <item name="android:windowActionModeOverlay">true</item>
+
+                  <item name="android:colorAccent">#1565C0</item>
+
                   <item name="android:navigationBarColor">#FFFFFF</item>
+
+                  <item name="android:statusBarColor">#FFFFFF</item>
+
+                  <item name="android:windowLightStatusBar">true</item>
+
               </style>
+
           </resources>
           EOF
+
+
+          # --------------------------------------
+          # AndroidManifest.xml
+          # --------------------------------------
 
           cat > SedfaApp/app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
 
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest
+              xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <!-- Internet -->
+              <uses-permission
+                  android:name="android.permission.INTERNET" />
+
+              <!-- Network status -->
+              <uses-permission
+                  android:name="android.permission.ACCESS_NETWORK_STATE" />
+
 
               <application
+
                   android:allowBackup="true"
+
                   android:label="@string/app_name"
+
                   android:supportsRtl="true"
+
+                  android:usesCleartextTraffic="false"
+
                   android:theme="@style/AppTheme">
 
+
                   <activity
+
                       android:name=".MainActivity"
+
                       android:exported="true"
+
+                      android:screenOrientation="unspecified"
+
                       android:configChanges="orientation|screenSize|keyboardHidden">
 
+
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+
+                          <action
+                              android:name="android.intent.action.MAIN" />
+
+                          <category
+                              android:name="android.intent.category.LAUNCHER" />
+
                       </intent-filter>
 
                   </activity>
@@ -133,73 +253,245 @@ jobs:
           </manifest>
           EOF
 
+
+          # --------------------------------------
+          # MainActivity.java
+          # --------------------------------------
+
           cat > SedfaApp/app/src/main/java/com/sedfa/portal/MainActivity.java <<'EOF'
           package com.sedfa.portal;
 
-          import android.annotation.SuppressLint;
+          import android.app.Activity;
           import android.os.Bundle;
+          import android.webkit.CookieManager;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
 
-          import androidx.appcompat.app.AppCompatActivity;
-
-          public class MainActivity extends AppCompatActivity {
+          public class MainActivity extends Activity {
 
               private WebView webView;
 
               private static final String APP_URL =
                   "https://script.google.com/macros/s/AKfycbwLxjLFbLIwYp3tWXk8NRgn5DlgvFxuvcjDLYB_fdtNCQbdIPf-OfIRdz2rrN65k9u6pg/exec";
 
-              @SuppressLint("SetJavaScriptEnabled")
+
               @Override
               protected void onCreate(Bundle savedInstanceState) {
+
                   super.onCreate(savedInstanceState);
 
+
+                  // إنشاء WebView
                   webView = new WebView(this);
+
                   setContentView(webView);
 
+
+                  // إعداد WebView
                   WebSettings settings = webView.getSettings();
 
+
+                  // JavaScript
                   settings.setJavaScriptEnabled(true);
+
+
+                  // Local Storage
                   settings.setDomStorageEnabled(true);
+
+
+                  // Database
                   settings.setDatabaseEnabled(true);
+
+
+                  // File access
                   settings.setAllowFileAccess(true);
-                  settings.setJavaScriptCanOpenWindowsAutomatically(true);
-                  settings.setSupportMultipleWindows(true);
+
+
+                  // Content access
+                  settings.setAllowContentAccess(true);
+
+
+                  // Responsive pages
                   settings.setUseWideViewPort(true);
+
                   settings.setLoadWithOverviewMode(false);
 
-                  webView.setWebViewClient(new WebViewClient());
-                  webView.setWebChromeClient(new WebChromeClient());
 
+                  // فتح النوافذ التي تحتاجها صفحات الويب
+                  settings.setJavaScriptCanOpenWindowsAutomatically(true);
+
+                  settings.setSupportMultipleWindows(true);
+
+
+                  // Zoom
+                  settings.setSupportZoom(false);
+
+                  settings.setBuiltInZoomControls(false);
+
+                  settings.setDisplayZoomControls(false);
+
+
+                  // User Agent طبيعي
+                  settings.setUserAgentString(
+                      settings.getUserAgentString()
+                  );
+
+
+                  // Cookies
+                  CookieManager cookieManager =
+                      CookieManager.getInstance();
+
+                  cookieManager.setAcceptCookie(true);
+
+                  cookieManager.setAcceptThirdPartyCookies(
+                      webView,
+                      true
+                  );
+
+
+                  // منع فتح الروابط خارج التطبيق
+                  webView.setWebViewClient(
+                      new WebViewClient()
+                  );
+
+
+                  // دعم JavaScript dialogs والتحميلات
+                  webView.setWebChromeClient(
+                      new WebChromeClient()
+                  );
+
+
+                  // فتح بوابة صدفا
                   webView.loadUrl(APP_URL);
               }
 
+
               @Override
               public void onBackPressed() {
-                  if (webView != null && webView.canGoBack()) {
+
+                  if (
+                      webView != null &&
+                      webView.canGoBack()
+                  ) {
+
                       webView.goBack();
+
                   } else {
+
                       super.onBackPressed();
+
                   }
+              }
+
+
+              @Override
+              protected void onDestroy() {
+
+                  if (webView != null) {
+
+                      webView.stopLoading();
+
+                      webView.destroy();
+
+                      webView = null;
+                  }
+
+                  super.onDestroy();
               }
           }
           EOF
 
-          cd SedfaApp
 
-          gradle wrapper --gradle-version 8.2 --distribution-type bin
+          echo "Android project created successfully."
 
-      - name: Build APK
+
+      # ==========================================
+      # 6. تنزيل Gradle 8.2.1
+      # ==========================================
+      - name: Install Gradle 8.2.1
+        shell: bash
+        run: |
+
+          set -e
+
+          GRADLE_VERSION="8.2.1"
+
+          wget -q \
+            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+            -O /tmp/gradle.zip
+
+          sudo mkdir -p /opt/gradle
+
+          sudo unzip -q \
+            /tmp/gradle.zip \
+            -d /opt/gradle
+
+          echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+          echo "Gradle ${GRADLE_VERSION} installed."
+
+
+      # ==========================================
+      # 7. التحقق من الأدوات
+      # ==========================================
+      - name: Check Build Environment
+        run: |
+
+          java -version
+
+          gradle --version
+
+          sdkmanager --list | head -40
+
+
+      # ==========================================
+      # 8. Build APK
+      # ==========================================
+      - name: Build Debug APK
         working-directory: SedfaApp
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+          set -e
+
+          gradle assembleDebug --no-daemon --stacktrace
+
+          echo "APK BUILD SUCCESSFUL"
+
+
+      # ==========================================
+      # 9. التأكد من وجود APK
+      # ==========================================
+      - name: Verify APK
+        shell: bash
+        run: |
+
+          set -e
+
+          APK="SedfaApp/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+
+              echo "ERROR: APK was not created."
+
+              exit 1
+
+          fi
+
+          echo "APK found:"
+          ls -lh "$APK"
+
+
+      # ==========================================
+      # 10. رفع APK كـ Artifact
+      # ==========================================
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
+
           name: Sedfa-Digital-Portal-APK
+
           path: SedfaApp/app/build/outputs/apk/debug/app-debug.apk
+
+          if-no-files-found: error
