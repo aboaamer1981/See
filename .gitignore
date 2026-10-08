@@ -1,0 +1,12 @@
+# Local/editor/system artifacts
+.DS_Store
+Thumbs.db
+*.log
+
+# Local test/build output
+coverage/
+playwright-report/
+test-results/
+
+# Project-local secrets/config that should not be committed
+.clasp.local.json

@@ -1,0 +1,17 @@
+# Project documentation and local audit artifacts — never deploy to Apps Script
+**/*.md
+**/*.xlsx
+Claude outputs/**
+.claude/**
+.git/**
+.gitignore
+
+# Local/editor/system artifacts
+**/.DS_Store
+**/Thumbs.db
+
+# Local check scripts / archives — never deploy (V7.36b)
+_index_scripts_check.js
+**/*.js
+**/*.zip
+**/*.txt
