@@ -15,16 +15,13 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Create Android WebView Project
+      - name: Create Android Project
         run: |
           mkdir -p SedfaApp/app/src/main/java/com/sedfa/portal
           mkdir -p SedfaApp/app/src/main/res/values
@@ -92,6 +89,7 @@ jobs:
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
                   android:label="@string/app_name"
+                  android:roundIcon="@mipmap/ic_launcher"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.Light.NoActionBar">
                   <activity
@@ -156,8 +154,9 @@ jobs:
           }
           EOF
 
-      - name: Build APK
+      - name: Setup Gradle and Build APK
         run: |
+          sudo apt-get update && sudo apt-get install -y gradle
           cd SedfaApp
           gradle assembleDebug --no-daemon
 
